@@ -15,7 +15,7 @@ from PIL import Image, ImageFont, ImageDraw
 def sortSecond(val):
     return val[1]
 
-def addInformationToGif(images, render_time, fps, samplerate):
+def addInformationToImages(images, render_time, fps, samplerate):
     '''
     # Input
     #   images = list of Image objects
@@ -37,6 +37,22 @@ def addInformationToGif(images, render_time, fps, samplerate):
         draw.text((20,20), text_info, (255,255,255))
     
     return images
+
+
+def saveImages(images):
+    from datetime import datetime
+    date = datetime.now().strftime('%d%m%Y-%H%M%S')
+    save_to_dir = 'data/temp/'
+    filename_prefix = 'temp_'
+    file_extension = '.jpg'
+
+    counter = 1
+    for i in images:
+        #i.convert('RGB') # Necessary to save as .jpg
+        file_name = save_to_dir + filename_prefix + date + '_' + str(counter) + file_extension
+        i.convert('RGB').save(file_name)
+        counter += 1
+
 
 def sortMiddleLine(im, dy):
     '''
@@ -65,20 +81,19 @@ def sortMiddleLine(im, dy):
 
     for y in range(min_y, max_y, 1):
         pixel_row = list()
-        temp = list()
         counter = 0
 
         for x in range(min_x, max_x, 1):
             pixel = im.getpixel((x, y))
             total = pixel[0] + pixel[1] + pixel[2]
-            temp.append([pixel, total])
+            pixel_row.append([pixel, total])
 
             counter += 1
 
-        temp.sort(reverse=True, key=sortSecond)
+        pixel_row.sort(reverse=True, key=sortSecond)
 
-        for i in range(len(temp)):
-            im_copy.putpixel((i, y), temp[i][0])
+        for i in range(len(pixel_row)):
+            im_copy.putpixel((i, y), pixel_row[i][0])
     
     return im_copy
 

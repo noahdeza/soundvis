@@ -160,6 +160,7 @@ cython_debug/
 #.idea/
 
 # soundvis related
+data/test01.gif
 data/audio/**
 data/img/**
 data/temp/**

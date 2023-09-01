@@ -1,71 +1,98 @@
-# Python imports
-import os
-import time
-from glob import glob
-
 # soundvis information
 SV_INFO = {
     'author':'Noah Dezaire',
     'version':'0.0.1',
 }
 
-# Logging imports
-import logging
-import dezlibs.logger.Logger as Logger
-
-# Create logger
-LOGGER_LVL = logging.DEBUG
-logger = Logger.createLogger(lvl=LOGGER_LVL, mode='w')
-logger.setLevel(logging.DEBUG)
-
-logger.info(f'Author: {SV_INFO["author"]}')
-logger.info(f'Starting soundvis v{SV_INFO["version"]}...')
-logger.info('Importing libraries...')
-start_import_libraries = time.time()
-
-# 3rd party imports
-import numpy as np
-import pandas as pd
-
-# Visual related imports
-from PIL import Image, ImageFont, ImageDraw
-import librosa
-import dezlibs.imageeditor.main as imge
-
-end_import_libraries = time.time() - start_import_libraries
-logger.info(f'Libraries imported in {end_import_libraries}')
-
-
 # Declare starting variables
 PI = 3.141592653589793
-FPS = 30
+FPS = 30 # Must be 30 or 60
 VIDEO_LENGTH = 2 # SECONDS
 TOTAL_FRAMES = FPS * VIDEO_LENGTH
 
-logger.debug('Importing functions...')
-# Declare functions
-def calculateCommonIntervalSrFps(sr, fps, len_amps):
-    '''
-    # Input
-    #   sr = samplerate of audio file
-    #   fps = frames per second of GIF
-    #   len_amps = length of "list(amps)"
-    #
-    # Output
-    #   indexes = list of indexes of list() "amps" that should be
-    #       used for the generation of the GIF
-    '''
-    indexes = list()
-    ratio_sr_fps = sr / fps
-    len_gif = round((len_amps / sr), 1) # seconds
-
-    for i in range(0, int(len_gif * fps), 1):
-        indexes.append(i * ratio_sr_fps)
-
-    return indexes
-
 
 if __name__ == '__main__':
+    # Python imports
+    import os
+    import time
+    from glob import glob
+    from pathlib import Path
+
+    # Logging imports
+    import logging
+    import dezlibs.logger.Logger as Logger
+
+    # Create logger
+    LOGGER_LVL = logging.DEBUG
+    logger = Logger.createLogger(lvl=LOGGER_LVL, mode='w')
+    logger.setLevel(logging.DEBUG)
+
+    logger.info(f'Starting soundvis v{SV_INFO["version"]}...')
+    logger.info(f'Author: {SV_INFO["author"]}')
+    logger.info('Importing libraries...')
+    start_import_libraries = time.time()
+
+    # 3rd party imports
+    import numpy as np
+    import pandas as pd
+
+    # Visual related imports
+    from PIL import Image
+    import librosa
+    import dezlibs.imageeditor.main as imge
+
+    end_import_libraries = time.time() - start_import_libraries
+    logger.info(f'Libraries imported in {end_import_libraries}')
+
+    # Check if all necessary directories have been created
+    logger.debug('Creating mandatory directories if they do not exist...')
+    Path('data/audio').mkdir(exist_ok=True)
+    Path('data/img').mkdir(exist_ok=True)
+    Path('data/temp').mkdir(exist_ok=True)
+
+    # Empty "data/temp" to store generated images for video
+    logger.info('Removing files from data/temp')
+    files = glob('data/temp/*')
+    for f in files:
+        try:
+            logger.debug('Removing {f}')
+            os.remove(f)
+        except Exception as e:
+            logger.error(f'Failed to remove {f}. Reason: {e}')
+
+    logger.debug('Importing functions...')
+    # Declare functions
+    def calculateCommonIntervalSrFps(sr: float, fps: int, amps: list) -> list:
+        '''
+        # INPUT
+        #   sr = samplerate of audio file
+        #   fps = frames per second of GIF
+        #   amps = list() of amplitudes of wave file that should be analysed
+        #
+        # OUTPUT
+        #   data = data of "amps" that should be
+        #       used for the generation of the GIF
+        #
+        # INFO
+        #   Take the necessary values of "amps" for each frame that needs
+        #   to be generated.
+        '''
+        amps = list(amps)
+        data = list()
+        len_amps = len(amps)
+        ratio_sr_fps = sr / fps
+        len_gif = round((len_amps / sr), 1) # seconds
+        amount_of_frames = int(len_gif * fps)
+
+        for i in range(0, amount_of_frames, 1):
+            try:
+                data.append(amps[int(i * ratio_sr_fps)])
+            except IndexError as e:
+                logger.debug('Index error when creating "data": {e}')
+                data.append(amps[-1])
+
+        return data                                         
+
     logger.info('Loading image paths...')
     image_files = glob('data/img/*.png')
     logger.info('Loaded image paths')
@@ -124,20 +151,6 @@ if __name__ == '__main__':
     bpm, beats = librosa.beat.beat_track(y=amps,sr=samplerate)
     logger.info(f'BPM {selected_audio_file}: {bpm}')
     logger.info(f'Beats {selected_audio_file}: {beats}')
-
-     # Create folder to store images of new gif
-    if not os.path.exists('data/temp'):
-        os.makedirs(f'data/temp')
-    
-    # Empty "data/temp" to store generated images for gif
-    logger.info('Removing files from data/temp')
-    files = glob('data/temp/*')
-    for f in files:
-        try:
-            logger.debug('Removing {f}')
-            os.remove(f)
-        except Exception as e:
-            logger.error(f'Failed to remove {f}. Reason: {e}')
     
     # Open selected image
     logger.debug(f'Loading image {selected_image_file}')
@@ -145,64 +158,36 @@ if __name__ == '__main__':
         im = Image.open(selected_image_file)
         logger.info('Image loaded successfully')
     except Exception as e:
-        logger.error('Failed to load image:')
-        logger.exception(e)
+        logger.error(f'Failed to load image: {e}')
     
     width, height = im.size
     amps *= 1000
     images = list()
     len_amps = len(amps)
     logger.debug(f'Max amplitude: {max(amps)}')
-    indexes_amps = calculateCommonIntervalSrFps(samplerate, FPS, len_amps)
+    indexes_amps = calculateCommonIntervalSrFps(samplerate, FPS, amps)
     len_indexes_amps = len(indexes_amps)
     
     logger.info('Starting single threaded GIF generation...')
-    start = time.time()
 
     counter = 1
     start_render = time.time()
     for i in indexes_amps:
         logger.debug(f'Generating image {counter}/{len_indexes_amps}')
-        temp_im = imge.sortMiddleLine(im, amps[int(i)])
+        try:
+            temp_im = imge.sortMiddleLine(im, i)
+        except IndexError as e:
+            logger.debug(f'Index error for sortMiddleLine: {e}')
+            temp_im = im.copy()
         images.append(temp_im)
         counter += 1
     end_render = time.time() - start_render
 
-    logger.debug(f'Time it took to render GIF: {round(end_render, 2)} s')
+    logger.debug(f'Time it took to render images: {round(end_render, 2)} s')
 
-    imge.addInformationToGif(images, end_render, FPS, samplerate)
-    
-    '''for i in amps[1000:1200]:
-        logger.debug(f'Generating image {counter}/{len_list}')
-        dy = abs(int(i * 100))
-        temp_im = imge.sortMiddleLine(im.copy(), dy)
-        draw = ImageDraw.Draw(temp_im)
-        draw.text((20,20), f'Frame: {counter}', (255,255,255))
-        
-        images.append(temp_im)
-        counter += 1'''
-
-    end = time.time()
-    time_single = end - start
-    
+    imge.addInformationToImages(images, end_render, FPS, samplerate)
     imge.createGif('data/test01.gif', images, FPS)
-    
-    images = list()
-    start = time.time()
-    data = list()
-    pixels = np.asarray(im)
-    
 
-    end = time.time()
-    time_multi = end - start
-    logging.info(f'Time image generation: {time_multi}')
-    logging.info(f'Time image generation: {time_multi}')
-    print(f'time single THREADED: {time_single}')
-    
-    # Add information to gif
-    #imge.addInformation(images, time_multi, FPS, samplerate)
-    
-    #imge.createGif('data/test4.gif', images, FPS)
-    
-    
-    print(f'')
+    logger.info('Saving images...')
+    imge.saveImages(images)
+    logger.info('Images saved')
