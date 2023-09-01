@@ -1,0 +1,5 @@
+TODO
+-Create README.MD file
+-Implement different sorting algoritms
+-Implement multithreading
+-Create GUI
