@@ -144,7 +144,7 @@ if __name__ == '__main__':
     amps *= 1000
     logger.info('Audio file loaded')
 
-    logger.debug('Information about audio file:'))
+    logger.debug('Information about audio file:')
     logger.debug(f'Sample rate: {samplerate}')
     logger.debug(f'Max amplitude: {np.max(amps)}')
     logger.debug(f'Min amplitude min: {np.min(amps)}')
