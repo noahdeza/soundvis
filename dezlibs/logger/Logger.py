@@ -44,3 +44,9 @@ def createLogger(lvl=None, mode='w'):
     logger.addHandler(get_filehandler(mode))
     
     return logger
+
+def getLogger():
+    logger = logging.getLogger(__name__)
+    logger.parent = False
+
+    return logger
